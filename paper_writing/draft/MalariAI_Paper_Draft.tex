@@ -71,7 +71,7 @@
 \begin{abstract}
 \noindent
 Automated malaria diagnosis from peripheral blood smear microscopy remains
-a critical open problem in global health AI, particularly in resource-limited settings where expert microscopists are scarce. Despite significant progress in applying deep learning to this domain, three compounding failure modes persist across the literature and remain unresolved in any single published framework. First, end-to-end detectors (\eg, Faster R-CNN, YOLO) treat unannotated cells as background, systematically suppressing true positives in sparsely labelled datasets a documented consequence of incomplete ground-truth that no prior decoupled architecture has directly addressed on a large public benchmark. Second, Non-Maximum Suppression (NMS) discards valid cell detections in high-density smear regions where red blood cells routinely overlap, causing systematic under-counting that is clinically dangerous. Third, existing pipelines produce opaque class labels without spatial evidence, severely limiting clinical adoption and physician trust. We present \malariai{}, a two-stage framework that addresses all three limitations in a unified pipeline. In Stage~1, an annotation-agnostic distance-transform guided watershed algorithm isolates every cell in the blood smear regardless of whether a ground-truth label exists, achieving label-resilient cell
+a critical open problem in global health AI, particularly in resource-limited settings where expert microscopists are scarce. Despite significant progress in applying deep learning to this domain, three compounding failure modes persist across the literature and remain unresolved in any single published framework. First, end-to-end detectors (\eg, Faster R-CNN, YOLO) treat unannotated cells as background, systematically suppressing true positives in sparsely labelled datasets --- a documented consequence of incomplete ground-truth that no prior decoupled architecture has directly addressed on a large public benchmark. Second, Non-Maximum Suppression (NMS) discards valid cell detections in high-density smear regions where red blood cells routinely overlap, causing systematic under-counting that is clinically dangerous. Third, existing pipelines produce opaque class labels without spatial evidence, severely limiting clinical adoption and physician trust. We present \malariai{}, a two-stage framework that addresses all three limitations in a unified pipeline. In Stage~1, an annotation-agnostic distance-transform guided watershed algorithm isolates every cell in the blood smear regardless of whether a ground-truth label exists, achieving label-resilient cell
 recovery that is independent of annotation completeness. In Stage~2, an
 EfficientNet-B0 classifier trained with Focal Loss performs multi-class
 infection stage identification (ring, trophozoite, schizont, gametocyte)
@@ -315,33 +315,39 @@ across institutions''~\cite{delgado2020} -- reads as a near-complete
 specification of the improvements we implement.
 
 \textbf{Pandiaraj \etal}~\cite{pandiaraj2024} propose the most
-architecturally elaborate two-stage system to date, combining a
+architecturally elaborate system in this category, combining a
 Trans-MobileUNet\texttt{++} (T-MUNet\texttt{++}) segmentation network
 with an Adaptive and Atrous Convolution-based Recurrent MobileNetV2
 (AA-CRMV2) detection backbone, optimised via the Updated Random
-Parameter Fennec Fox Optimisation (URP-FFO) algorithm.
-T-MUNet\texttt{++} is a segmentation architecture that integrates a
-Vision Transformer attention layer at the bottleneck with the nested
-dense skip connections of UNet\texttt{++}~\cite{zhou2018unetpp} and the
-depthwise separable convolutions of MobileNet. Atrous (dilated)
-convolution in the AA-CRMV2 backbone enables multi-scale receptive
-fields without increasing parameter count, beneficial for capturing
-both intra-cell parasite texture and inter-cell spatial context.
-Recurrent connections in the detection backbone allow iterative feature
-refinement, potentially aiding detection of overlapping cells.
+Parameter Fennec Fox Optimisation (URP-FFO) metaheuristic algorithm.
+Crucially, however, this framework is evaluated exclusively on
+Kaggle-hosted pre-cropped cell image datasets -- the Malaria Cell
+Images Dataset (27{,}558 patches) and a secondary Malaria Detection
+Dataset -- and performs \emph{binary} classification only (parasitised
+vs.\ uninfected erythrocyte). It does not operate on whole blood smear
+images, does not perform multi-class parasite stage detection (ring,
+trophozoite, schizont, gametocyte), and does not use the NIH BBBC041
+benchmark. The reported best result of 94.88\% accuracy (Dataset~1)
+is therefore a binary patch-level metric and is not directly comparable
+to object detection mAP evaluated on full-slide images. This places
+the work squarely in the pre-isolated cell classification family
+(\S\ref{ssec:cnn_class}) despite its architectural framing as a
+detection pipeline.
 
-Despite this architectural sophistication, several concerns limit the
-contribution's impact. The URP-FFO metaheuristic optimiser introduces
-significant reproducibility concerns: metaheuristic methods applied to
-neural network training are sensitive to random initialisation and offer
-no convergence guarantees, making independent replication difficult.
-Crucially, the framework contains no mechanism for handling class imbalance,
-no explainability layer, and no benchmark against a standard metric such
-as mAP at multiple IoU thresholds. The architectural complexity also
-raises clinical feasibility questions: the combined inference graph
-of T-MUNet\texttt{++} and AA-CRMV2 is substantially heavier than the
-lightweight MobileNet backbone suggests, which is at odds with the
-deployment targets (resource-limited settings) that motivate the field.
+T-MUNet\texttt{++} integrates a Vision Transformer attention layer at
+the bottleneck with the nested dense skip connections of
+UNet\texttt{++}~\cite{zhou2018unetpp} and depthwise separable
+convolutions from MobileNet; atrous (dilated) convolution in AA-CRMV2
+provides multi-scale receptive fields; and recurrent connections enable
+iterative feature refinement. Despite this sophistication, three
+critical gaps remain. The URP-FFO metaheuristic introduces significant
+reproducibility concerns -- metaheuristic methods applied to neural
+network training are sensitive to random initialisation and offer no
+convergence guarantees, making independent replication impractical.
+No class imbalance mechanism is present. No spatial explainability
+layer is integrated. And because no mAP metric is reported at any IoU
+threshold, quantitative comparison with whole-slide detection baselines
+is impossible.
 
 Taken together, the two-stage literature makes clear that architectural
 decoupling is the correct design direction, but that no existing system
@@ -740,11 +746,11 @@ M.~Delgado-Ortet, A.~Molina, S.~Alf\'{e}rez, J.~Rodellar, and A.~Merino.
 \newblock \textit{Entropy}, 22(6):657, 2020.
 
 \bibitem{pandiaraj2024}
-S.~Pandiaraj \etal
+A.~Pandiaraj, P.~R.~Kshirsagar, R.~Thiagarajan, T.~K.~Tak, and B.~Sivaneasan.
 \newblock A robust malaria cell detection framework using adaptive and atrous
-  convolution-based recurrent {MobileNetV2} with {Trans-MobileUNet++}-based
+  convolution-based recurrent {MobileNetV2} with {Trans-MobileUNet\texttt{++}}-based
   abnormality segmentation.
-\newblock \textit{Journal of Imaging Informatics in Medicine}, 2024.
+\newblock \textit{Journal of Imaging Informatics in Medicine}, 38:2381--2411, 2025.
 \newblock \url{https://doi.org/10.1007/s10278-024-01311-7}.
 
 \bibitem{yolov4malaria2024}

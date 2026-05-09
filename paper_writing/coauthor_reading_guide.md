@@ -114,15 +114,63 @@ Our three problems (defined in the paper):
 
 ---
 
+## Paper 4 — Pandiaraj, Kshirsagar, Thiagarajan, Tak, Sivaneasan (2025)
+**File:** `4-s10278-024-01311-7_260508_222013.pdf`  
+**Journal:** Journal of Imaging Informatics in Medicine, 38:2381–2411, 2025  
+**DOI:** https://doi.org/10.1007/s10278-024-01311-7
+
+### Background (already known — verify against the PDF):
+KB has read this paper in full. The key findings are:
+- **Datasets:** Kaggle Malaria Cell Images Dataset (27,558 pre-cropped patches) + a secondary Kaggle detection dataset. **NOT BBBC041. NOT whole-slide images.**
+- **Task:** Binary classification only — parasitised vs. uninfected. No multi-class stage detection (ring/trophozoite/schizont/gametocyte).
+- **Best result:** 94.88% accuracy (Dataset 1), 92.86% (Dataset 2). Accuracy on binary patches — not mAP on whole slides.
+- **Architecture:** Trans-MobileUNet++ (T-MUNet++) segmentation + AA-CRMV2 detection backbone + URP-FFO metaheuristic optimizer.
+- **Gaps confirmed:** No XAI, no class imbalance handling, no mAP metric, no whole-slide pipeline.
+
+### What to extract (verify and supplement KB's notes):
+
+| Field | What to find | Your notes |
+|-------|-------------|------------|
+| Full title | Exact title from page 1 | |
+| All 5 authors | Confirm: Pandiaraj, Kshirsagar, Thiagarajan, Tak, Sivaneasan | |
+| Dataset 1 details | Confirm: Kaggle, 27,558 images, binary labels, pre-cropped | |
+| Dataset 2 details | Size, source, labels | |
+| T-MUNet++ | What does the ++ mean here? How does transformer fit in? | |
+| AA-CRMV2 | What does "atrous" and "recurrent" add? Describe in 2 sentences | |
+| URP-FFO | What is the Fennec Fox Optimisation? Fixed params Maxiter=25, Npop=10? | |
+| Accuracy table | Find the exact accuracy numbers per dataset | |
+| mAP reported? | Confirm: No mAP at IoU=0.5 or 0.5:0.95 is reported | |
+| XAI? | Confirm: No Grad-CAM or explainability mentioned | |
+| Imbalance handling? | Confirm: No Focal Loss, no class weights, no sampling | |
+| Limitations (stated) | Find their own stated limitations in the conclusion | |
+| Future work quote | Exact sentences from conclusion — especially "real-time" limitation | |
+| P1 addressed? | Does their pipeline handle unannotated cells? | |
+| P2 addressed? | Do they address NMS / overlap in dense smears? | |
+| P3 addressed? | Any spatial heatmaps or explainability? | |
+
+### Key things to look for:
+- Confirm the dataset scope — we are claiming they solve an *easier* problem (binary pre-cropped patches from Kaggle) vs. our harder problem (multi-class whole-slide detection on BBBC041). The comparison table in §2.6 depends on this.
+- Find their exact stated limitation about "real-time" deployment — currently in §2.4 we paraphrase this; find the exact words for a potential quote.
+- URP-FFO: check if the parameter table (Maxiter=25, Npop=10) appears — this supports our reproducibility concern.
+- Do they compare against any mAP-based baselines at all? (We believe no — confirm.)
+
+### What NOT to do:
+- Do **not** compare their accuracy to our mAP — they are different metrics on different tasks.  
+  In the paper, we note the metrics are incomparable, which actually makes our point: they are solving a simpler, incomparable problem.
+- Do **not** update the §2.4 prose in the .tex (KB has already updated it). Just fill in the table above and flag any discrepancies.
+
+---
+
 ## What to do when you're done
 
 1. Fill in all three tables above
 2. Open `MalariAI_Paper_Draft.tex`
 3. Go to `\subsection{Summary of Limitations}` and verify Table 1 matches your findings
 4. Fix any bibliography entries marked `\placeholder{Author(s)}` — the BibTeX keys are:
-   - `singh2025optimized` → Paper 1 authors
-   - `loh2021automated` → Paper 2 authors
-   - `delgado2020deep` → Paper 3 authors
+   - `singh2025` → Paper 1 authors (Singh, Prabha, Abdulla)
+   - `loh2021` → Paper 2 authors (Loh, Yong, Yapeter, Subburaj, Chandramohanadas)
+   - `delgado2020` → Paper 3 authors (Delgado-Ortet, Molina, Alférez, Rodellar, Merino)
+   - `pandiaraj2024` → **Already fixed by KB** (Pandiaraj, Kshirsagar, Thiagarajan, Tak, Sivaneasan)
 5. For each paper, note 1–2 sentences we should add/fix in the Related Work prose
 
 ---
