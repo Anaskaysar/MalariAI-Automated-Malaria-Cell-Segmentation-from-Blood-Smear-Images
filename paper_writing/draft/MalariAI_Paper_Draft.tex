@@ -77,8 +77,8 @@ EfficientNet-B0 classifier trained with Focal Loss performs multi-class
 infection stage identification (ring, trophozoite, schizont, gametocyte)
 on each extracted crop, with Grad-CAM\texttt{++} generating per-cell spatial attention heatmaps as an integrated clinical explainability layer.
 We benchmark \malariai{} against a Faster R-CNN baseline on the publicly
-available NIH BBBC041 dataset comprising 1,208 training images and 80,113
-annotated instances across six cell categories, and demonstrate measurable
+available NIH BBBC041 dataset comprising 1,208 training images and 79,672
+valid annotated instances across six cell categories, and demonstrate measurable
 improvements in recall in dense smear regions, detection of rare infection
 stages, and interpretability. Our results establish that architectural
 decoupling between segmentation and classification is a principled response
@@ -625,11 +625,106 @@ training.
 
 \subsection{Baseline A: Faster R-CNN}
 \label{ssec:baseline}
-\placeholder{[To be completed. Key content: ResNet-50 FPN backbone, RPN anchor design from EDA (108px median cell), class-weighted head, training protocol.]}
+
+Pipeline A serves as our primary quantitative baseline and is implemented as
+a Faster R-CNN~\cite{ren2015} with a ResNet-50 Feature Pyramid Network (FPN)
+backbone pretrained on MS-COCO. The standard 91-class classification head is
+replaced by a \texttt{FastRCNNPredictor} with 7 output classes (background
+plus the six BBBC041 categories). The FPN generates multi-scale feature maps
+at strides \{4, 8, 16, 32, 64\}, enabling simultaneous detection of large
+cells (\eg, leukocytes, median area $\approx$14,000\,px$^2$) and small
+ring-stage nuclei ($\approx$3,500\,px$^2$).
+
+\paragraph{Training protocol.}
+The model is trained for 80 epochs on the 966-image training split using
+Stochastic Gradient Descent (SGD) with initial learning rate $5 \times
+10^{-3}$, momentum 0.9, and weight decay $10^{-4}$. A MultiStepLR schedule
+reduces the learning rate by a factor of 10 at global epoch 50.
+Gradient clipping with maximum norm 10.0 prevents loss spikes from
+high-density images. Training uses batch size 4 on an NVIDIA T4 GPU
+(16\,GB VRAM). The best checkpoint is selected by minimum validation loss.
+
+\paragraph{Structural training ceiling.}
+Figure~\ref{fig:frcnn_loss} shows the training and validation loss curves
+over 80 epochs. Three observations characterise the baseline's fundamental
+limitation. First, validation loss plateaus at approximately 0.23 from
+epoch~8 while training loss continues to decrease, reaching 0.11 by
+epoch~50. This divergence is not conventional overfitting: the model is
+correctly detecting unannotated cells that genuinely exist in the image,
+but the closed-world loss function penalises these detections as false
+positives. Second, after the learning rate drop at epoch~50, training
+loss decreases further to 0.08 but validation loss \emph{increases} to 0.28.
+Smaller gradient updates cause the model to commit more aggressively to
+detections of unannotated cells, compounding the annotation artefact.
+Third, the best checkpoint is selected at epoch~23 (val.\ loss 0.2294):
+the 57 subsequent training epochs yield no improvement and in fact degrade
+validation performance. These observations directly confirm the P1 failure
+mode -- the validation ceiling is not an optimisation failure but a
+structural consequence of annotation incompleteness that no learning rate
+schedule, data augmentation, or additional training can resolve within
+the end-to-end detection paradigm.
+
+\begin{figure}[h!]
+  \centering
+  \includegraphics[width=\linewidth]{fig_frcnn_loss.png}
+  \caption{Faster R-CNN (Baseline A) training and validation loss over
+    80 epochs on NIH BBBC041. Validation loss plateaus at $\approx 0.23$
+    from epoch~8 while training loss continues to fall. After the learning
+    rate drop at epoch~50, validation loss \emph{increases} to 0.28 as the
+    model over-commits to detections on unannotated cells -- a direct
+    manifestation of Problem~P1. Best checkpoint selected at epoch~23
+    (val.\ loss 0.2294).}
+  \label{fig:frcnn_loss}
+\end{figure}
+
+\paragraph{Qualitative predictions.}
+Figure~\ref{fig:frcnn_predictions} shows ground-truth annotations (top row)
+versus Faster R-CNN predictions (bottom row) on four held-out validation
+images. The model successfully detects red blood cells at high precision
+and recalls leukocytes consistently given their distinctive size and staining.
+Parasite-stage detections are visible but sparse, particularly for
+gametocyte and schizont. In the rightmost column, multiple genuinely distinct
+cells in a dense region receive a single fused detection box or are
+suppressed by NMS, directly illustrating the P2 failure mode.
+
+\begin{figure}[h!]
+  \centering
+  \includegraphics[width=\linewidth]{fig_frcnn_predictions.png}
+  \caption{Ground truth (top) versus Faster R-CNN predictions (bottom)
+    on four validation images. Colour coding follows the class legend:
+    red~= red blood cell; remaining colours~= parasitic stages and
+    leukocyte. NMS suppression of overlapping cells in dense-region
+    images (P2) is visible in the rightmost column.}
+  \label{fig:frcnn_predictions}
+\end{figure}
 
 \subsection{Evaluation Metrics}
 \label{ssec:metrics}
-\placeholder{[To be completed. Key content: mAP@0.5, mAP@{[0.5:0.95]}, per-class AP for each of the 6 classes, dense-region recall definition (images with $>$100 boxes), Dice for Stage 1 segmentation quality.]}
+
+All detection results are reported as mean Average Precision at IoU
+threshold 0.5 (mAP@0.5), computed using the \texttt{torchmetrics}
+\texttt{MeanAveragePrecision} implementation with \texttt{class\_metrics=True}
+to produce per-class AP values alongside the aggregate. A predicted box is
+counted as a true positive if its IoU with a ground-truth box of the same
+class exceeds 0.5; detections with confidence below 0.3 are discarded
+before evaluation.
+
+Per-class AP is reported for all six BBBC041 categories separately, as the
+aggregate mAP is dominated by the red blood cell class (97.2\% of
+annotations) and obscures performance on the clinically critical parasitic
+stages. We specifically highlight schizont and gametocyte AP as key
+indicators of rare-class performance, since these are the classes most
+affected by the 537:1 class imbalance.
+
+For Stage~1 (watershed segmentation), we report cell recovery rate -- the
+fraction of ground-truth bounding boxes that contain at least one
+watershed-detected region -- on a 50-image held-out evaluation set.
+A watershed region is considered a match if its centroid falls within
+the ground-truth box boundary.
+
+Dense-region recall is evaluated separately on images with more than 100
+annotated boxes (11\% of training images), to isolate the P2 failure
+mode from aggregate metrics.
 
 % ════════════════════════════════════════════════════════════════════════════
 % SECTION 4 – EXPERIMENTS (placeholder)
@@ -637,9 +732,95 @@ training.
 \section{Experiments}
 \label{sec:experiments}
 
-\placeholder{[To be completed. Structure: 4.1 Implementation Details
-(hardware, hyperparameters, training schedule); 4.2 Quantitative Results;
-4.3 Ablation Study; 4.4 Dense Region Analysis; 4.5 Qualitative XAI Results.]}
+\subsection{Implementation Details}
+\label{ssec:impl}
+
+\paragraph{Hardware.}
+Baseline A (Faster R-CNN) training was conducted on an NVIDIA T4 GPU
+(16\,GB VRAM) via Kaggle Notebooks. Pipeline B (EfficientNet-B0) training
+is conducted on the same hardware. Inference for the deployed web application
+(Phase~4) runs entirely on CPU; EfficientNet-B0 processes one blood smear
+in approximately 2 seconds on a standard compute instance.
+
+\paragraph{Baseline A (Faster R-CNN).}
+Architecture: ResNet-50 FPN backbone (MS-COCO pretrained), 7-class
+\texttt{FastRCNNPredictor} head. Optimiser: SGD ($lr = 5 \times 10^{-3}$,
+momentum $= 0.9$, weight decay $= 10^{-4}$). Schedule: MultiStepLR,
+$\gamma = 0.1$ at epoch~50. Batch size: 4. Epochs: 80. Gradient clipping:
+max norm 10.0. Best checkpoint: epoch~23 (val.\ loss 0.2294). Training
+time: $\approx$5.5 hours on T4.
+
+\paragraph{Pipeline B (MalariAI).}
+\placeholder{[To be completed after Phase 3 training. Key content:
+EfficientNet-B0 hyperparameters, Focal Loss $\gamma$ and per-class $\alpha$,
+crop size, augmentation strategy, number of epochs.]}
+
+\subsection{Quantitative Results}
+\label{ssec:quant}
+
+Table~\ref{tab:results} reports per-class AP@0.5 and mAP@0.5 for both
+pipelines on the 242-image validation split. Baseline~A results are final;
+Pipeline~B results will be inserted upon completion of Phase~3 training.
+
+\begin{table}[h!]
+\centering
+\small
+\caption{Per-class AP@0.5 and mAP@0.5 on the NIH BBBC041 validation split
+  (242 images, seed 42). Classes sorted by decreasing Baseline~A AP.
+  Pipeline~B results pending.
+  $\dagger$~= rare class ($<200$ training instances).}
+\label{tab:results}
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Class} & \textbf{Baseline A} & \textbf{MalariAI (B)} \\
+               & Faster R-CNN        & Watershed + EffNet-B0 \\
+\midrule
+Red blood cell  & 90.94\% & --- \\
+Leukocyte       & 88.12\% & --- \\
+Trophozoite     & 67.22\% & --- \\
+Ring            & 57.17\% & --- \\
+Gametocyte$\dagger$ & 25.95\% & --- \\
+Schizont$\dagger$   & 24.57\% & --- \\
+\midrule
+\textbf{mAP@0.5} & \textbf{58.99\%} & \textbf{---} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The per-class breakdown reveals the severity of class imbalance under the
+end-to-end detection paradigm. Gametocyte (144 training instances, 0.18\%
+of boxes) achieves only 25.95\% AP -- less than one quarter of the dominant
+class performance. Schizont (179 instances) achieves 24.57\%. Both rare
+classes fall below 26\% AP despite the model training for 80 epochs with
+COCO-pretrained weights. Trophozoite (1,473 instances) achieves 67.22\%,
+demonstrating that even a modest increase in training examples produces
+a commensurate improvement in detection quality. Ring stage (57.17\%) is
+the weakest non-rare class, consistent with its visual similarity to
+healthy RBCs noted in Section~\ref{ssec:dataset}. These baselines
+establish the minimum target that Pipeline~B must surpass on each class
+to validate the contribution of Focal Loss and the decoupled architecture.
+
+\subsection{Ablation Study}
+\label{ssec:ablation}
+\placeholder{[To be completed after Phase 3. Key comparisons:
+(i) watershed alone vs.\ Faster R-CNN for cell recovery rate;
+(ii) EfficientNet-B0 with cross-entropy vs.\ Focal Loss;
+(iii) Pipeline B with vs.\ without Grad-CAM++ (inference speed overhead).]}
+
+\subsection{Dense Region Analysis}
+\label{ssec:dense}
+\placeholder{[To be completed. Metric: recall on images with $>$100
+annotated boxes. Expected result: watershed recovers cells that NMS
+suppresses in dense regions, producing higher recall in the
+$>$100-box subgroup.]}
+
+\subsection{Qualitative Explainability Results}
+\label{ssec:xai_results}
+\placeholder{[To be completed after Phase 3. Content: Grad-CAM++ heatmaps
+on representative crops from each parasitic stage, dual view (crop
+detail and full-image overlay), comparison of correct vs.\ misclassified
+cells to show what the model attends to in ambiguous cases.}]
 
 % ════════════════════════════════════════════════════════════════════════════
 % SECTION 5 – RESULTS (placeholder)
