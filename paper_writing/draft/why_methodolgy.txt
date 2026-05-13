@@ -1,0 +1,18 @@
+Papers to read — by component:
+
+Focal Loss (why we handle class imbalance this way):
+Lin et al., "Focal Loss for Dense Object Detection" — ICCV 2017. This is the RetinaNet paper. Read this first — it directly justifies why we use γ=2.0 and per-class α instead of oversampling or class-weighted CE.
+
+EfficientNet-B0 (why this architecture for small crops):
+Tan & Le, "EfficientNet: Rethinking Model Scaling for Convolutional Neural Networks" — ICML 2019. Focus on the compound scaling section and the small-image benchmark results. That's the justification for choosing B0 over ResNet-18.
+Grad-CAM++ (why not standard Grad-CAM):
+
+Chattopadhay et al., "Grad-CAM++: Generalized Gradient-based Visual Explanations for Deep Convolutional Networks" — WACV 2018. Read the comparison section against standard Grad-CAM — specifically the multi-activation case, which is exactly what happens in 64×64 cell crops.
+Watershed for cell segmentation (why distance-transform guided):
+
+You don't need the original 1992 watershed paper. Instead read:
+Malpica et al., "Applying watershed algorithms to the segmentation of clustered nuclei" — Cytometry 1997. It's the standard reference for distance-transform + watershed on overlapping biological cells.
+
+
+Faster R-CNN baseline (why it fails on BBBC041):
+Ren et al., "Faster R-CNN: Towards Real-Time Object Detection with Region Proposal Networks" — NIPS 2015. You already have results from it — you mainly need to cite the architecture correctly in §3.5.
